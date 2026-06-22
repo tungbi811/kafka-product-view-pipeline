@@ -1,6 +1,6 @@
 # Product View Pipeline
 
-Simple Kafka pipeline:
+Kafka pipeline:
 
 ```text
 external Kafka product_view -> local Kafka product_view_local -> MongoDB
