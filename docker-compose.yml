@@ -1,0 +1,99 @@
+x-kafka-common: &kafka-common
+  image: confluentinc/cp-kafka:7.6.1
+  networks:
+    - streaming-network
+  environment: &kafka-common-env
+    KAFKA_PROCESS_ROLES: broker,controller
+    KAFKA_CONTROLLER_QUORUM_VOTERS: 0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093
+    CLUSTER_ID: XMVdmieVScezIPmnB_QcXA
+    KAFKA_LISTENERS: CONTROLLER://:9093,INTERNAL://:29092,EXTERNAL://:9094
+    KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+    KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+    KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+    KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+    KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+    KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+    KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+    KAFKA_MIN_INSYNC_REPLICAS: 2
+    KAFKA_NUM_PARTITIONS: 3
+    KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+services:
+  kafka-0:
+    <<: *kafka-common
+    hostname: kafka-0
+    container_name: kafka-0
+    ports:
+      - "9094:9094"
+    volumes:
+      - kafka_data_0:/var/lib/kafka/data
+    environment:
+      <<: *kafka-common-env
+      KAFKA_NODE_ID: 0
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-0:29092,EXTERNAL://localhost:9094
+
+  kafka-1:
+    <<: *kafka-common
+    hostname: kafka-1
+    container_name: kafka-1
+    ports:
+      - "9194:9094"
+    volumes:
+      - kafka_data_1:/var/lib/kafka/data
+    environment:
+      <<: *kafka-common-env
+      KAFKA_NODE_ID: 1
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:29092,EXTERNAL://localhost:9194
+
+  kafka-2:
+    <<: *kafka-common
+    hostname: kafka-2
+    container_name: kafka-2
+    ports:
+      - "9294:9094"
+    volumes:
+      - kafka_data_2:/var/lib/kafka/data
+    environment:
+      <<: *kafka-common-env
+      KAFKA_NODE_ID: 2
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:29092,EXTERNAL://localhost:9294
+
+  akhq:
+    image: tchiotludo/akhq:0.24.0
+    container_name: akhq
+    networks:
+      - streaming-network
+    ports:
+      - "8180:8080"
+    depends_on:
+      - kafka-0
+      - kafka-1
+      - kafka-2
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            local-kafka:
+              properties:
+                bootstrap.servers: "kafka-0:29092,kafka-1:29092,kafka-2:29092"
+
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    networks:
+      - streaming-network
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+networks:
+  streaming-network:
+    external: true
+    name: kafka-streaming-network
+
+volumes:
+  kafka_data_0:
+  kafka_data_1:
+  kafka_data_2:
+  mongo_data:
